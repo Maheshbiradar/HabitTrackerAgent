@@ -30,6 +30,28 @@ def _error(message: str) -> dict:
     """Return a structured error dict for tool responses."""
     return {"status": "error", "message": message}
 
+def _update_streak_counts(tool_context: ToolContext) -> None:
+    """Recalculate streaks for all habits and write streak_counts back to state."""
+    habits = tool_context.state.get("habits", {})
+    streak_counts = {}
+    for habit_id, habit in habits.items():
+        checkins = habit["checkins"]
+        dates = sorted(
+            {datetime.date.fromisoformat(c) for c in checkins},
+            reverse=True
+        )
+        dates_set = set(dates)
+        streak = 0
+        today = datetime.date.today()
+        yesterday = today - datetime.timedelta(days=1)
+        if dates and dates[0] >= yesterday:
+            current = today if today in dates_set else yesterday
+            while current in dates_set:
+                streak += 1
+                current -= datetime.timedelta(days=1)
+        streak_counts[habit_id] = streak
+    tool_context.state["streak_counts"] = streak_counts
+    
 
 def _ok(**kwargs) -> dict:
     """Return a structured success dict for tool responses."""
@@ -83,4 +105,40 @@ def add_habit(name: str, frequency: str,goal: str, tool_context: ToolContext) ->
     streak_counts[habit_id] = 0
     tool_context.state["streak_counts"] = streak_counts
     return _ok(habit_id=habit_id, name=new_habit["name"])
+
+def log_checkin(habit_id: str, date: str, tool_context: ToolContext) -> dict:
+    """Record a completed check-in for a habit on a given date.
+
+    Args:
+        habit_id: The unique ID of the habit to check in (e.g., 'EXE-20260525').
+        date: The date of the check-in in YYYY-MM-DD format (e.g., '2026-05-25').
+
+    Returns:
+        On success: {"status": "success", "habit_id": str, "date": str, "current_streak": int}
+        On failure: {"status": "error", "message": str}
+    """
+    if not habit_id or not habit_id.strip():
+        return _error("Habit ID cannot be empty.")
+    if not date or not date.strip():
+        return _error("Date cannot be empty.")
+    try:
+        datetime.datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        return _error("Date must be in YYYY-MM-DD format.")
+
+    habits = tool_context.state.get("habits", {})
+
+    if habit_id not in habits:
+        return _error(f"Habit '{habit_id}' not found.")
+
+    habit = habits[habit_id]
+    if date in habit["checkins"]:
+        return _error(f"Check-in for '{date}' already exists.")
+
+    habit["checkins"].append(date)
+    habit["last_updated"] = datetime.datetime.now().isoformat()
+    tool_context.state["habits"] = habits
+    _update_streak_counts(tool_context)
+    current_streak = tool_context.state.get("streak_counts", {}).get(habit_id, 0)
+    return _ok(habit_id=habit_id, date=date, current_streak=current_streak)    
 
