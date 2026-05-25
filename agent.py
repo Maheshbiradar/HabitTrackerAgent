@@ -143,6 +143,17 @@ def log_checkin(habit_id: str, date: str, tool_context: ToolContext) -> dict:
     return _ok(habit_id=habit_id, date=date, current_streak=current_streak)    
 
 def view_habits(tool_context: ToolContext) -> dict:
+    """Return a summary of all tracked habits, including streaks and check-in counts.
+
+    Use this tool when the user asks to see their habits, list their habits,
+    or wants an overview of their progress.
+
+    Returns:
+        On success (habits exist): {"status": "success", "habits": list[dict], "count": int}
+            Each habit dict contains: habit_id, name, frequency, goal, start_date,
+            current_streak (int), total_checkins (int), last_updated (str | None).
+        On success (no habits): {"status": "success", "message": str, "habits": []}
+    """
     habits = tool_context.state.get("habits", {})
     streak_counts = tool_context.state.get("streak_counts", {})
     if not habits:
@@ -162,3 +173,35 @@ def view_habits(tool_context: ToolContext) -> dict:
         for habit_id, habit in habits.items()
     ]
     return _ok(habits=habit_list, count=len(habit_list))
+
+def get_streak(habit_id: str, tool_context: ToolContext) -> dict:
+    """Get the current streak and total check-in count for a specific habit.
+
+    Use this tool when the user asks about their streak, how many days in a row
+    they have completed a habit, or wants a progress update for a single habit.
+
+    Args:
+        habit_id: The unique ID of the habit to look up (e.g., 'EXE-20260525').
+
+    Returns:
+        On success: {"status": "success", "habit_id": str, "name": str,
+                     "current_streak": int, "total_checkins": int}
+        On failure: {"status": "error", "message": str}
+    """
+    if not habit_id or not habit_id.strip():
+        return _error("Habit ID cannot be empty.")
+
+    habits = tool_context.state.get("habits", {})
+    if habit_id not in habits:
+        return _error(f"Habit '{habit_id}' not found.")
+
+    streak_counts = tool_context.state.get("streak_counts", {})
+    current_streak = streak_counts.get(habit_id, 0)
+
+    habit = habits[habit_id]
+    return _ok(
+        habit_id=habit_id,
+        name=habit["name"],
+        current_streak=current_streak,
+        total_checkins=len(habit["checkins"]),
+    )
