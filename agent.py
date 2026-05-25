@@ -41,7 +41,6 @@ def add_habit(name: str, frequency: str,goal: str, tool_context: ToolContext) ->
     Args:
         name: Display name of the habit (e.g., 'Exercise'). Must not be empty.
         frequency: How often the habit should be performed. Must be one of: 'daily', 'weekly', 'custom'.
-        start_date: The date the habit starts in YYYY-MM-DD format (e.g., '2026-05-25').
         goal: A short description of the desired outcome (e.g., '30 min cardio'). Must not be empty.
 
     Returns:
