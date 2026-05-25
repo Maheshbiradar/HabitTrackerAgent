@@ -205,3 +205,47 @@ def get_streak(habit_id: str, tool_context: ToolContext) -> dict:
         current_streak=current_streak,
         total_checkins=len(habit["checkins"]),
     )
+
+def edit_habit(habit_id: str, name: str | None = None, frequency: str | None = None, goal: str | None = None, tool_context: ToolContext = None) -> dict:
+    """Update one or more fields of an existing habit.
+
+    Use this tool when the user wants to rename a habit, change its frequency,
+    or update its goal. Only the fields you provide will be changed — omitted
+    fields are left as-is.
+
+    Args:
+        habit_id: The unique ID of the habit to update (e.g., 'EXE-20260525').
+        name: New display name for the habit. Must not be empty if provided.
+        frequency: New frequency. Must be one of: 'daily', 'weekly', 'custom' if provided.
+        goal: New goal description. Must not be empty if provided.
+
+    Returns:
+        On success: {"status": "success", "habit_id": str, "name": str}
+        On failure: {"status": "error", "message": str}
+    """
+    if not habit_id or not habit_id.strip():
+        return _error("Habit ID cannot be empty.")
+
+    habits = tool_context.state.get("habits", {})
+    if habit_id not in habits:
+        return _error(f"Habit '{habit_id}' not found.")
+
+    if frequency is not None and frequency not in VALID_FREQUENCIES:
+        return _error(f"Invalid frequency '{frequency}'. Valid options are: {', '.join(VALID_FREQUENCIES)}.")
+    if name is not None and not name.strip():
+        return _error("Habit name cannot be empty.")
+    if goal is not None and not goal.strip():
+        return _error("Goal cannot be empty.")
+    if name is None and frequency is None and goal is None:
+        return _error("Nothing to update. Provide at least one of: name, frequency, or goal.")
+
+    habit = habits[habit_id]
+    if name is not None:
+        habit["name"] = name.strip()
+    if frequency is not None:
+        habit["frequency"] = frequency
+    if goal is not None:
+        habit["goal"] = goal.strip()
+    habit["last_updated"] = datetime.datetime.now().isoformat()
+    tool_context.state["habits"] = habits
+    return _ok(habit_id=habit_id, name=habit["name"])
