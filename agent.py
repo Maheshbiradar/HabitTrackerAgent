@@ -90,7 +90,7 @@ def add_habit(name: str, frequency: str,goal: str, tool_context: ToolContext) ->
     start_date = datetime.date.today().isoformat()
 
     new_habit = {
-        "id": habit_id,
+        "habit_id": habit_id,
         "name": name.strip(),
         "frequency": frequency,
         "start_date": start_date,
@@ -142,3 +142,23 @@ def log_checkin(habit_id: str, date: str, tool_context: ToolContext) -> dict:
     current_streak = tool_context.state.get("streak_counts", {}).get(habit_id, 0)
     return _ok(habit_id=habit_id, date=date, current_streak=current_streak)    
 
+def view_habits(tool_context: ToolContext) -> dict:
+    habits = tool_context.state.get("habits", {})
+    streak_counts = tool_context.state.get("streak_counts", {})
+    if not habits:
+        return _ok(message="You have no habits yet. Add one to get started!", habits=[])
+
+    habit_list = [
+        {
+            "habit_id":       habit["habit_id"],
+            "name":           habit["name"],
+            "frequency":      habit["frequency"],
+            "goal":           habit["goal"],
+            "start_date":     habit["start_date"],
+            "current_streak": streak_counts.get(habit_id, 0),
+            "total_checkins": len(habit["checkins"]),
+            "last_updated":   habit.get("last_updated"),
+        }
+        for habit_id, habit in habits.items()
+    ]
+    return _ok(habits=habit_list, count=len(habit_list))
