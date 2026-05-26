@@ -13,11 +13,14 @@ A conversational ADK agent that helps you build and maintain daily habits.
 ## Project structure
 
 ```
-habit_tracker/
-├── agent.py          # agents, tools, and runner
-├── .env              # GOOGLE_API_KEY (never commit)
+HabitTrackerAgent/
+├── agent/
+│   ├── __init__.py       # ADK entry point — exposes root_agent
+│   └── agent.py          # all tools, search_agent, and root_agent
+├── __init__.py           # empty (package marker)
+├── .env                  # GOOGLE_API_KEY (never commit)
 ├── .gitignore
-└── README.md
+└── readme.md
 ```
 
 ## Setup
